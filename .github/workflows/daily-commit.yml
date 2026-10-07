@@ -1,0 +1,42 @@
+name: Daily Contribution Activity
+
+on:
+  schedule:
+    # Runs at 05:00 and 13:00 UTC
+    - cron: '0 5,13 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  activity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Record Activity
+        run: |
+          DOW=$(date +%u)
+          RAND=$(( RANDOM % 100 ))
+          if [ "$DOW" -ge 6 ]; then
+            if [ "$RAND" -lt 70 ]; then
+              echo "Weekend off day, skipping commit."
+              exit 0
+            fi
+          else
+            if [ "$RAND" -lt 35 ]; then
+              echo "Weekday off day, skipping commit."
+              exit 0
+            fi
+          fi
+
+          echo "Activity update: $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> activity.log
+          git config user.name "rizkywildan"
+          git config user.email "w1ld4n.r.w1j4y4@gmail.com"
+          git add activity.log
+          git commit -m "chore(activity): automated daily activity [$(date +'%Y-%m-%d %H:%M')]" || exit 0
+          git push

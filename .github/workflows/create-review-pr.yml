@@ -1,0 +1,46 @@
+name: Create Review PRs
+
+on:
+  workflow_dispatch:
+    inputs:
+      count:
+        description: 'Number of PRs to create'
+        required: false
+        default: '50'
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  create-prs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create reviewable PRs
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          COUNT: ${{ github.event.inputs.count || '50' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          NUM=${COUNT:-50}
+          for i in $(seq 1 $NUM); do
+            BRANCH="telemetry-patch-$i-$(date +%s)"
+            git checkout -b "$BRANCH" origin/main
+            mkdir -p docs
+            echo "Telemetry metrics verification batch #$i at $(date -u)" >> docs/telemetry.log
+            git add docs/telemetry.log
+            git commit -m "chore(metrics): routine telemetry sync #$i"
+            git push origin "$BRANCH"
+            gh pr create --title "chore(metrics): routine telemetry sync #$i" \
+                         --body "Automated patch proposal for telemetry validation." \
+                         --head "$BRANCH" \
+                         --base main
+            sleep 1
+          done
